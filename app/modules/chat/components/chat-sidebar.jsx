@@ -106,6 +106,7 @@ export function ChatSidebar({ user, chats: initialChats }) {
       <Link
         key={chat.id}
         href={`/chat/${chat.id}`}
+        onClick={() => setActiveChatId(chat.id)}
         className={cn(
           "block rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
           chat.id === activeChatId && "bg-sidebar-accent",

@@ -19,8 +19,15 @@ export default function ChatMessageForm({ initialMessage, onMessageChange }) {
 
   const [useWebSearch, setUseWebSearch] = useState(false);
 
-  const [selectedModel, setSelectedModel] = useState(models?.models[0].id);
+  const [selectedModel, setSelectedModel] = useState(null);
   const { mutateAsync, isPending: isChatPending } = useCreateChat();
+
+  // Set default model once models load
+  useEffect(() => {
+    if (models?.models?.length > 0 && !selectedModel) {
+      setSelectedModel(models.models[0].id);
+    }
+  }, [models, selectedModel]);
 
   useEffect(() => {
     if (initialMessage) {

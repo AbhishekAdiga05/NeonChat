@@ -4,6 +4,13 @@ import db from "@/lib/db";
 import { currentUser } from "@/app/modules/authentication/actions";
 import { MessageRole, MessageType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { generateText } from "ai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { CHAT_SYSTEM_PROMPT } from "@/lib/prompt";
+
+const provider = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
 export const createMessageInChat = async (values, chatId) => {
   const user = await currentUser();
@@ -34,23 +41,35 @@ export const createMessageInChat = async (values, chatId) => {
     },
   });
 
-  // Trigger Your AI here
-  const res = await fetch("http://localhost:3000/api/chat", {
-    method: "POST",
-    body: JSON.stringify({
-      chatId: chatId,
-      model: model,
-      content: content,
-    }),
+  // Fetch previous messages for context
+  const previousMessages = await db.message.findMany({
+    where: { chatId },
+    orderBy: { createdAt: "asc" },
   });
 
-  const { text } = await res.json();
+  const aiMessages = previousMessages.map((msg) => ({
+    role: msg.messageRole === MessageRole.USER ? "user" : "assistant",
+    content: msg.content,
+  }));
+
+  let assistantContent = "Sorry, I could not generate a response.";
+
+  try {
+    const result = await generateText({
+      model: provider.chat(model),
+      system: CHAT_SYSTEM_PROMPT,
+      messages: aiMessages,
+    });
+    assistantContent = result.text;
+  } catch (error) {
+    console.error("AI generation error:", error);
+  }
 
   const Assistantmessage = await db.message.create({
     data: {
       model,
-      chatId: chatId,
-      content: text,
+      chatId,
+      content: assistantContent,
       messageRole: MessageRole.ASSISTANT,
       messageType: MessageType.NORMAL,
     },
