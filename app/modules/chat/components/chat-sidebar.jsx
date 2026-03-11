@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useChatStore } from "../store/chat-store";
+import { useGetChats } from "../hooks/chat";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +25,15 @@ import DeleteChatModal from "@/components/ui/delete-chat-modal";
 import { useState, useMemo } from "react";
 import Image from "next/image";
 
-export function ChatSidebar({ user, chats }) {
+export function ChatSidebar({ user, chats: initialChats }) {
   const { activeChatId, setActiveChatId } = useChatStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChatId, setSelectedChatId] = useState(null);
+
+  // Fetch chats with React Query, using server-fetched data as initialData
+  const { data } = useGetChats();
+  const chats = data?.data ?? initialChats ?? [];
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {

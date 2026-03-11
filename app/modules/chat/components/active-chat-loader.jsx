@@ -1,21 +1,19 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useGetChatById } from "@/modules/chat/hooks/chat";
-import { useChatStore } from "@/modules/chat/store/chat-store";
+import { useGetChatById } from "@/app/modules/chat/hooks/chat";
+import { useChatStore } from "@/app/modules/chat/store/chat-store";
 
 export default function ActiveChatLoader({ chatId }) {
   const { setActiveChatId, setMessages, addChat, chats } = useChatStore();
 
   const { data, isLoading, isError } = useGetChatById(chatId);
 
- 
   useEffect(() => {
     if (!chatId) return;
     setActiveChatId(chatId);
   }, [chatId, setActiveChatId]);
 
-  
   useEffect(() => {
     if (!data || !data.success || !data.data) return;
 

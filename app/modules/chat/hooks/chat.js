@@ -8,8 +8,6 @@ import {
 } from "../actions";
 import { useRouter } from "next/navigation";
 import { useChatStore } from "../store/chat-store";
-import { da } from "zod/v4/locales";
-import { useChat } from "@ai-sdk/react";
 import { toast } from "sonner";
 
 export const useGetChats = () => {
@@ -30,7 +28,6 @@ export const useCreateMessageInChat = (chatId) => {
       // Cancel any outgoing refetches for this chat so they don't overwrite our optimistic update
       await queryClient.cancelQueries(["chats", chatId]);
 
-    
       const previousChat = queryClient.getQueryData(["chats", chatId]);
       const previousMessages = previousChat?.data?.messages ?? messages;
 
@@ -47,7 +44,6 @@ export const useCreateMessageInChat = (chatId) => {
       addMessage(optimisticMessage);
       setMessages([...previousMessages, optimisticMessage]);
 
-      
       const optimisticChat = previousChat
         ? {
             ...previousChat,
@@ -92,14 +88,13 @@ export const useCreateMessageInChat = (chatId) => {
       if (res.success && res.data) {
         const { userMessage, Assistantmessage } = res.data;
 
-        
-        const newMessages = (context?.previousMessages || []).concat(userMessage);
+        const newMessages = (context?.previousMessages || []).concat(
+          userMessage,
+        );
         if (Assistantmessage) newMessages.push(Assistantmessage);
 
-        
         setMessages(newMessages);
 
-     
         const previousChat = context?.previousChat;
         if (previousChat) {
           const updatedChat = {
@@ -112,7 +107,6 @@ export const useCreateMessageInChat = (chatId) => {
           queryClient.setQueryData(["chats", chatId], updatedChat);
         }
 
-   
         queryClient.invalidateQueries(["chats"]);
       }
     },
@@ -131,12 +125,12 @@ export const useCreateChat = () => {
         const chat = res.data;
         addChat(chat);
         setActiveChatId(chat.id);
-        
+
         // Set messages from the created chat
         setMessages(chat.messages || []);
-        
+
         queryClient.invalidateQueries(["chats"]);
-        
+
         // Redirect WITH autoTrigger to stream AI response
         router.push(`/chat/${chat.id}?autoTrigger=true`);
       }
@@ -152,7 +146,6 @@ export const useGetChatById = (chatId) => {
   return useQuery({
     queryKey: ["chats", chatId],
     queryFn: () => getChatById(chatId),
- 
   });
 };
 

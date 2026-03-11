@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 import { cn } from "@/lib/utils";
-import { useAIModels } from "@/modules/ai-agent/hook/ai-agent";
+import { useAIModels } from "@/app/modules/ai-agent/hook/ai-agent";
 import { ModelSelector } from "./model-selector";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { useCreateMessageInChat } from "../hooks/chat";
 
-
-export default function MessageForm({model , chatId}) {
+export default function MessageForm({ model, chatId }) {
   const { data: models, isPending, error } = useAIModels();
 
   const [message, setMessage] = useState("");
@@ -21,7 +20,8 @@ export default function MessageForm({model , chatId}) {
   const [useWebSearch, setUseWebSearch] = useState(false);
   const [useMicrophone, setUseMicrophone] = useState(false);
   const [selectedModel, setSelectedModel] = useState(model);
-  const { mutateAsync, isPending: isChatPending } = useCreateMessageInChat(chatId);
+  const { mutateAsync, isPending: isChatPending } =
+    useCreateMessageInChat(chatId);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,14 +29,12 @@ export default function MessageForm({model , chatId}) {
     if (!message.trim()) return;
 
     try {
-     
       await mutateAsync({ content: message, model: selectedModel });
       toast.success("Message sent successfully");
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
     } finally {
-      
       setMessage("");
     }
   };
@@ -87,7 +85,7 @@ export default function MessageForm({model , chatId}) {
                 title="Toggle web search"
                 className={cn(
                   "h-8 px-2 gap-1",
-                  useWebSearch && "ring-2 ring-ring/40"
+                  useWebSearch && "ring-2 ring-ring/40",
                 )}
               >
                 <Globe className="h-4 w-4" />
@@ -120,9 +118,16 @@ export default function MessageForm({model , chatId}) {
                 message.trim() ? "Send message" : "Enter a message to enable"
               }
             >
-            {isChatPending ? <>
-            <Spinner /></>: <><Send className="h-4 w-4" />
-              <span className="sr-only">Send message</span></> }
+              {isChatPending ? (
+                <>
+                  <Spinner />
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  <span className="sr-only">Send message</span>
+                </>
+              )}
             </Button>
           </div>
         </div>
