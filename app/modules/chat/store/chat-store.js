@@ -2,14 +2,16 @@
 import { create } from "zustand";
 
 export const useChatStore = create((set, get) => ({
-  chats: [],          // All user's chats
+  chats: [], // All user's chats
   activeChatId: null, // Currently open chat
-  messages: [],        // Messages for the active chat
- triggeredChats: new Set(), // Track which chats have been auto-triggered
+  messages: [], // Messages for the active chat
+  isAiGenerating: false, // True while AI is generating a response
+  triggeredChats: new Set(), // Track which chats have been auto-triggered
   // 🚀 Setters
   setChats: (chats) => set({ chats }),
   setActiveChatId: (chatId) => set({ activeChatId: chatId }),
   setMessages: (messages) => set({ messages }),
+  setIsAiGenerating: (value) => set({ isAiGenerating: value }),
 
   // ➕ Add new chat (on create)
   addChat: (chat) => set({ chats: [chat, ...get().chats] }),
@@ -20,7 +22,7 @@ export const useChatStore = create((set, get) => ({
   // 🧹 Clear messages when switching chat
   clearMessages: () => set({ messages: [] }),
 
-   markChatAsTriggered: (chatId) => {
+  markChatAsTriggered: (chatId) => {
     const triggered = new Set(get().triggeredChats);
     triggered.add(chatId);
     set({ triggeredChats: triggered });

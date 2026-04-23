@@ -1,26 +1,22 @@
-import { convertToModelMessages, streamText, tool } from "ai";
+import { convertToModelMessages, streamText } from "ai";
 import { CHAT_SYSTEM_PROMPT } from "@/lib/prompt";
 import db from "@/lib/db";
 import { MessageRole } from "@prisma/client";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 const provider = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-
-
 function convertStoredMessageToUI(msg) {
   try {
     const parts = JSON.parse(msg.content);
-    
-   
-    const validParts = parts.filter(part => {
-     
-      return part.type === 'text';
-    });
 
+    const validParts = parts.filter((part) => {
+      return part.type === "text";
+    });
 
     if (validParts.length === 0) {
       return null;
@@ -33,7 +29,6 @@ function convertStoredMessageToUI(msg) {
       createdAt: msg.createdAt,
     };
   } catch (e) {
-
     return {
       id: msg.id,
       role: msg.messageRole.toLowerCase(),
@@ -54,59 +49,53 @@ function extractPartsAsJSON(message) {
 
 export async function POST(req) {
   try {
-    const { chatId, messages: newMessages, model, skipUserMessage } = await req.json();
- 
-    const previousMessages = chatId
-      ? await db.message.findMany({
-          where: { chatId },
-          orderBy: { createdAt: "asc" },
-        })
-      : [];
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-
-    const uiMessages = previousMessages
-      .map(convertStoredMessageToUI)
-      .filter(msg => msg !== null); // Remove invalid messages
+    const {
+      chatId,
+      messages: newMessages,
+      model,
+      skipUserMessage,
+    } = await req.json();
 
     const normalizedNewMessages = Array.isArray(newMessages)
       ? newMessages
       : [newMessages];
 
-    console.log("📊 Previous messages:", uiMessages.length);
-    console.log("📊 New messages:", normalizedNewMessages.length);
-
-    // ✅ FIXED: Combine messages properly
-    const allUIMessages = [...uiMessages, ...normalizedNewMessages];
+    const allUIMessages = normalizedNewMessages;
+    // Cap the context window to the last 20 messages to prevent hitting token limits
+    const messagesForContext = allUIMessages.slice(-20);
 
     // ✅ CRITICAL FIX: convertToModelMessages might fail with tool parts
     // We need to ensure only valid messages are converted
     let modelMessages;
     try {
-      modelMessages = convertToModelMessages(allUIMessages);
-      console.log("✅ Converted to model messages:", modelMessages.length);
+      modelMessages = convertToModelMessages(messagesForContext);
     } catch (conversionError) {
-      console.error("❌ Message conversion error:", conversionError);
-      
-     
-      modelMessages = allUIMessages.map(msg => ({
-        role: msg.role,
-        content: msg.parts
-          .filter(p => p.type === 'text')
-          .map(p => p.text)
-          .join('\n')
-      })).filter(m => m.content); // Remove empty messages
-      
-      console.log("⚠️ Using fallback conversion:", modelMessages.length);
+      console.error("Message conversion error:", conversionError);
+      // Fallback: extract plain text from parts
+      modelMessages = messagesForContext
+        .map((msg) => ({
+          role: msg.role,
+          content: msg.parts
+            .filter((p) => p.type === "text")
+            .map((p) => p.text)
+            .join("\n"),
+        }))
+        .filter((m) => m.content);
     }
-
-    console.log("🤖 Final model messages:", JSON.stringify(modelMessages, null, 2));
 
     // ✅ FIXED: Proper streamText configuration
     const result = streamText({
       model: provider.chat(model),
       messages: modelMessages,
       system: CHAT_SYSTEM_PROMPT,
-   
     });
 
     return result.toUIMessageStreamResponse({
@@ -114,17 +103,14 @@ export async function POST(req) {
       originalMessages: allUIMessages,
       onFinish: async ({ responseMessage }) => {
         try {
-         
-
           const messagesToSave = [];
 
-
           if (!skipUserMessage) {
-            const latestUserMessage = normalizedNewMessages[normalizedNewMessages.length - 1];
+            const latestUserMessage =
+              normalizedNewMessages[normalizedNewMessages.length - 1];
 
             if (latestUserMessage?.role === "user") {
               const userPartsJSON = extractPartsAsJSON(latestUserMessage);
-
 
               messagesToSave.push({
                 chatId,
@@ -139,7 +125,6 @@ export async function POST(req) {
           // Save assistant response
           if (responseMessage?.parts && responseMessage.parts.length > 0) {
             const assistantPartsJSON = extractPartsAsJSON(responseMessage);
-       
 
             messagesToSave.push({
               chatId,
@@ -154,7 +139,6 @@ export async function POST(req) {
             await db.message.createMany({
               data: messagesToSave,
             });
-           
           }
         } catch (error) {
           console.error("❌ Error saving messages:", error);
@@ -164,14 +148,14 @@ export async function POST(req) {
   } catch (error) {
     console.error("❌ API Route Error:", error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message || "Internal server error",
-        details: error.toString() 
+        details: error.toString(),
       }),
-      { 
-        status: 500, 
-        headers: { "Content-Type": "application/json" } 
-      }
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 }

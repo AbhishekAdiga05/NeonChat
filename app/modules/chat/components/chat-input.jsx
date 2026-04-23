@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { SearchIcon, PaperclipIcon, ChevronDownIcon } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { SearchIcon, PaperclipIcon, ChevronDownIcon } from "lucide-react";
 
 export function ChatInput() {
   return (
@@ -8,7 +8,7 @@ export function ChatInput() {
       <div className="mx-auto max-w-3xl">
         <Textarea
           placeholder="Type your message here..."
-          className="min-h-[100px] resize-none border-border bg-background"
+          className="min-h-25 resize-none border-border bg-background"
         />
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -26,5 +26,5 @@ export function ChatInput() {
         </div>
       </div>
     </div>
-  )
+  );
 }

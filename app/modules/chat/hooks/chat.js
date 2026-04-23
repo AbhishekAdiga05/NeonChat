@@ -3,18 +3,34 @@ import {
   createChatWithMessage,
   createMessageInChat,
   deleteChat,
+  generateAiResponse,
   getAllChats,
   getChatById,
 } from "../actions";
 import { useRouter } from "next/navigation";
 import { useChatStore } from "../store/chat-store";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
-export const useGetChats = () => {
-  return useQuery({
+export const useGetChats = (initialChats) => {
+  const { setChats } = useChatStore();
+
+  const query = useQuery({
     queryKey: ["chats"],
     queryFn: getAllChats,
+    initialData: initialChats
+      ? { success: true, data: initialChats, message: "" }
+      : undefined,
   });
+
+  // Sync to Zustand store whenever data changes
+  useEffect(() => {
+    if (query.data?.data) {
+      setChats(query.data.data);
+    }
+  }, [query.data, setChats]);
+
+  return query;
 };
 
 export const useCreateMessageInChat = (chatId) => {
@@ -26,7 +42,7 @@ export const useCreateMessageInChat = (chatId) => {
     // Optimistic update: update both the zustand store and React Query cache
     onMutate: async (values) => {
       // Cancel any outgoing refetches for this chat so they don't overwrite our optimistic update
-      await queryClient.cancelQueries(["chats", chatId]);
+      await queryClient.cancelQueries({ queryKey: ["chats", chatId] });
 
       const previousChat = queryClient.getQueryData(["chats", chatId]);
       const previousMessages = previousChat?.data?.messages ?? messages;
@@ -81,7 +97,7 @@ export const useCreateMessageInChat = (chatId) => {
       }
 
       // Ensure chats list is refreshed
-      queryClient.invalidateQueries(["chats"]);
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
 
     onSuccess: (res, _variables, context) => {
@@ -107,7 +123,7 @@ export const useCreateMessageInChat = (chatId) => {
           queryClient.setQueryData(["chats", chatId], updatedChat);
         }
 
-        queryClient.invalidateQueries(["chats"]);
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
       }
     },
   });
@@ -129,7 +145,7 @@ export const useCreateChat = () => {
         // Set messages from the created chat
         setMessages(chat.messages || []);
 
-        queryClient.invalidateQueries(["chats"]);
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
 
         // Redirect WITH autoTrigger to stream AI response
         router.push(`/chat/${chat.id}?autoTrigger=true`);
@@ -146,20 +162,53 @@ export const useGetChatById = (chatId) => {
   return useQuery({
     queryKey: ["chats", chatId],
     queryFn: () => getChatById(chatId),
+    staleTime: 30 * 1000, // messages are managed via Zustand; avoid refetch on every focus
   });
 };
 
 export const useDeleteChat = (chatId) => {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { setChats, chats, clearMessages, activeChatId, setActiveChatId } =
+    useChatStore();
   return useMutation({
     mutationFn: () => deleteChat(chatId),
     onSuccess: () => {
-      queryClient.invalidateQueries(["chats"]);
+      // Remove from Zustand store immediately
+      setChats(chats.filter((c) => c.id !== chatId));
+      if (activeChatId === chatId) {
+        clearMessages();
+        setActiveChatId(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
       router.push("/");
     },
     onError: () => {
       toast.error("Failed to delete chat");
+    },
+  });
+};
+
+export const useGenerateAiResponse = (chatId) => {
+  const queryClient = useQueryClient();
+  const { setMessages } = useChatStore();
+
+  return useMutation({
+    mutationFn: () => generateAiResponse(chatId),
+    onSuccess: (res) => {
+      if (res.success && res.data?.assistantMessage) {
+        const assistantMsg = res.data.assistantMessage;
+        // Use getState() to always read the latest messages, never stale closure
+        const currentMessages = useChatStore.getState().messages;
+        setMessages([...currentMessages, assistantMsg]);
+        queryClient.invalidateQueries({ queryKey: ["chats", chatId] });
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+      } else if (!res.success) {
+        toast.error(res.message || "Failed to generate AI response");
+      }
+    },
+    onError: () => {
+      toast.error("Failed to generate AI response");
     },
   });
 };

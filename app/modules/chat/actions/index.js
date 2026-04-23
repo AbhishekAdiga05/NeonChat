@@ -22,13 +22,27 @@ export const createMessageInChat = async (values, chatId) => {
     };
   }
 
-  const { content, model } = values;
+  const { content, model: inputModel } = values;
 
   if (!content || content.trim() === "") {
     return {
       success: false,
       message: "Message content is required",
     };
+  }
+
+  // Resolve model: use the provided model or fall back to the chat's stored model
+  let model = inputModel;
+  if (!model) {
+    const chat = await db.chat.findUnique({
+      where: { id: chatId },
+      select: { model: true },
+    });
+    model = chat?.model;
+  }
+
+  if (!model) {
+    return { success: false, message: "No model specified for this chat" };
   }
 
   const userMessage = await db.message.create({
@@ -41,7 +55,7 @@ export const createMessageInChat = async (values, chatId) => {
     },
   });
 
-  // Fetch previous messages for context
+  // Fetch all messages (including the one just created) for AI context
   const previousMessages = await db.message.findMany({
     where: { chatId },
     orderBy: { createdAt: "asc" },
@@ -52,7 +66,7 @@ export const createMessageInChat = async (values, chatId) => {
     content: msg.content,
   }));
 
-  let assistantContent = "Sorry, I could not generate a response.";
+  let assistantContent = null;
 
   try {
     const result = await generateText({
@@ -63,6 +77,7 @@ export const createMessageInChat = async (values, chatId) => {
     assistantContent = result.text;
   } catch (error) {
     console.error("AI generation error:", error);
+    return { success: false, message: "Failed to generate AI response" };
   }
 
   const Assistantmessage = await db.message.create({
@@ -140,7 +155,10 @@ export const getAllChats = async () => {
         userId: user.id,
       },
       include: {
-        messages: true,
+        messages: {
+          take: 10,
+          orderBy: { createdAt: 'desc' }
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -179,11 +197,19 @@ export const getChatById = async (chatId) => {
         userId: user.id,
       },
       include: {
-        messages: true,
+        messages: {
+          take: 50,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
-    // console.log(JSON.stringify(chat , null, 2));
+    if (chat && chat.messages) {
+      chat.messages.reverse();
+    }
+
     return {
       success: true,
       message: "Chat fetched successfully",
@@ -196,6 +222,67 @@ export const getChatById = async (chatId) => {
       message: "Failed to fetch chat",
     };
   }
+};
+
+/**
+ * Generate only the AI response for an existing chat.
+ * Used by auto-trigger — the user message already exists in DB, so we must
+ * NOT create another one (that would cause duplicates).
+ */
+export const generateAiResponse = async (chatId) => {
+  const user = await currentUser();
+  if (!user) return { success: false, message: "Unauthorized user" };
+
+  const chat = await db.chat.findUnique({
+    where: { id: chatId, userId: user.id },
+    select: { model: true },
+  });
+
+  if (!chat?.model) {
+    return { success: false, message: "Chat not found or has no model" };
+  }
+
+  const model = chat.model;
+
+  const previousMessages = await db.message.findMany({
+    where: { chatId },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const aiMessages = previousMessages.map((msg) => ({
+    role: msg.messageRole === MessageRole.USER ? "user" : "assistant",
+    content: msg.content,
+  }));
+
+  let assistantContent = null;
+  try {
+    const result = await generateText({
+      model: provider.chat(model),
+      system: CHAT_SYSTEM_PROMPT,
+      messages: aiMessages,
+    });
+    assistantContent = result.text;
+  } catch (error) {
+    console.error("AI generation error (auto-trigger):", error);
+    return { success: false, message: "Failed to generate AI response" };
+  }
+
+  const assistantMessage = await db.message.create({
+    data: {
+      model,
+      chatId,
+      content: assistantContent,
+      messageRole: MessageRole.ASSISTANT,
+      messageType: MessageType.NORMAL,
+    },
+  });
+
+  revalidatePath(`/chat/${chatId}`);
+  return {
+    success: true,
+    message: "AI response generated",
+    data: { assistantMessage },
+  };
 };
 
 export const deleteChat = async (chatId) => {

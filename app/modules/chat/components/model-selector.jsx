@@ -99,7 +99,7 @@ export function ModelSelector({
               />
             </div>
           </div>
-          <ScrollArea className="h-[400px]">
+          <ScrollArea className="h-100">
             <div className="p-2">
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                 Available Models ({filteredModels.length})

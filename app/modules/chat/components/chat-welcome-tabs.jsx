@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Sparkles, Newspaper, Code, GraduationCap} from "lucide-react";
+import React, { useState } from "react";
+import { Sparkles, Newspaper, Code, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-
 
 const CHAT_TAB_MESSAGE = [
   {
@@ -56,7 +55,8 @@ function ChatWelcomeTabs({ userName = "John Doe", onMessageSelect }) {
     <div className="flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-3xl space-y-8">
         <h1 className="text-4xl font-semibold">
-          How can I help you, {userName.slice(0, userName.indexOf(" ")) || userName}?
+          How can I help you,{" "}
+          {userName.slice(0, userName.indexOf(" ")) || userName}?
         </h1>
 
         <div className="flex flex-wrap gap-2 w-full">
@@ -65,7 +65,7 @@ function ChatWelcomeTabs({ userName = "John Doe", onMessageSelect }) {
               key={tab.tabName}
               variant={activeTab === index ? "default" : "secondary"}
               onClick={() => setActiveTab(index)}
-              className="w-[110px] justify-start"
+              className="w-27.5 justify-start"
             >
               {tab.icon}
               <span className="ml-2">{tab.tabName}</span>
@@ -73,7 +73,7 @@ function ChatWelcomeTabs({ userName = "John Doe", onMessageSelect }) {
           ))}
         </div>
 
-        <div className="space-y-3 w-full min-h-[240px]">
+        <div className="space-y-3 w-full min-h-60">
           {CHAT_TAB_MESSAGE[activeTab].messages.map((message, index) => (
             <div key={index}>
               <button
