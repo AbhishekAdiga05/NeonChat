@@ -1,0 +1,258 @@
+"use client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import UserButton from "@/app/modules/authentication/components/user-button";
+import { PlusIcon, SearchIcon, EllipsisIcon, Trash, XIcon } from "lucide-react";
+import Link from "next/link";
+import { useChatStore } from "../store/chat-store";
+import { useGetChats } from "../hooks/chat";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import DeleteChatModal from "@/components/ui/delete-chat-modal";
+import { useState, useMemo } from "react";
+import Image from "next/image";
+
+function ChatItemSkeleton() {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg">
+      <Skeleton className="h-4 flex-1" />
+      <Skeleton className="h-4 w-4 shrink-0" />
+    </div>
+  );
+}
+
+function SidebarSkeletons() {
+  return (
+    <div className="space-y-1 px-2">
+      <Skeleton className="h-3 w-16 mx-2 mb-2" />
+      {[1, 2, 3].map((i) => (
+        <ChatItemSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+export function ChatSidebar({ user, chats: initialChats }) {
+  const { activeChatId, setActiveChatId } = useChatStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedChatId, setSelectedChatId] = useState(null);
+
+  // React Query — initialData hydrated from server-fetch to avoid flash
+  const { data, isFetching, isLoading } = useGetChats(initialChats);
+  const chats = data?.data ?? initialChats ?? [];
+
+  // Filter chats based on search query
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) return chats;
+    const query = searchQuery.toLowerCase();
+    return chats.filter(
+      (chat) =>
+        chat.title?.toLowerCase().includes(query) ||
+        chat.messages?.some((msg) =>
+          msg.content?.toLowerCase().includes(query),
+        ),
+    );
+  }, [chats, searchQuery]);
+
+  // Group chats by relative date
+  const groupedChats = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const lastMonth = new Date(today);
+    lastMonth.setDate(lastMonth.getDate() - 30);
+
+    const groups = {
+      today: [],
+      yesterday: [],
+      lastWeek: [],
+      lastMonth: [],
+      older: [],
+    };
+
+    filteredChats.forEach((chat) => {
+      const chatDate = new Date(chat.createdAt);
+      if (chatDate >= today) groups.today.push(chat);
+      else if (chatDate >= yesterday) groups.yesterday.push(chat);
+      else if (chatDate >= lastWeek) groups.lastWeek.push(chat);
+      else if (chatDate >= lastMonth) groups.lastMonth.push(chat);
+      else groups.older.push(chat);
+    });
+
+    return groups;
+  }, [filteredChats]);
+
+  const onDelete = (e, chatId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedChatId(chatId);
+    setIsModalOpen(true);
+  };
+
+  const renderChatGroup = (label, chatList) => {
+    if (chatList.length === 0) return null;
+    return (
+      <div className="mb-4">
+        <div className="mb-1 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+          {label}
+        </div>
+        {chatList.map((chat) => (
+          <Link
+            key={chat.id}
+            href={`/chat/${chat.id}`}
+            onClick={() => setActiveChatId(chat.id)}
+            className={cn(
+              "group flex items-center justify-between rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors duration-150",
+              chat.id === activeChatId && "bg-sidebar-accent font-medium",
+            )}
+          >
+            <span className="truncate flex-1 min-w-0">{chat.title}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-sidebar-accent-foreground/10 transition-opacity"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <EllipsisIcon className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-35">
+                <DropdownMenuLabel className="text-xs">
+                  Actions
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                  onClick={(e) => onDelete(e, chat.id)}
+                >
+                  <Trash className="h-3.5 w-3.5" />
+                  Delete chat
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Link>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-sidebar">
+      {/* Logo */}
+      <div className="flex items-center border-b border-sidebar-border px-4 py-3 h-14">
+        <Image
+          src="/logo.svg"
+          alt="Logo"
+          width={90}
+          height={32}
+          className="h-7 w-auto"
+        />
+      </div>
+
+      {/* New Chat */}
+      <div className="px-3 pt-3 pb-2">
+        <Link
+          href="/"
+          onClick={() => {
+            setActiveChatId(null);
+          }}
+        >
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 text-sm h-9"
+          >
+            <PlusIcon className="h-4 w-4" />
+            New Chat
+          </Button>
+        </Link>
+      </div>
+
+      {/* Search */}
+      <div className="px-3 pb-3">
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search chats..."
+            className="pl-8 pr-7 h-8 text-sm bg-sidebar-accent border-sidebar-border focus-visible:ring-1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Clear search"
+            >
+              <XIcon className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="mt-1.5 text-xs text-muted-foreground px-1">
+            {filteredChats.length}{" "}
+            {filteredChats.length === 1 ? "result" : "results"}
+          </p>
+        )}
+      </div>
+
+      {/* Chat List */}
+      <div className="flex-1 overflow-y-auto px-1 pb-2">
+        {isLoading && !initialChats?.length ? (
+          <SidebarSkeletons />
+        ) : filteredChats.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              {searchQuery ? "No chats match your search" : "No chats yet"}
+            </p>
+            {!searchQuery && (
+              <p className="mt-1 text-xs text-muted-foreground/70">
+                Start a conversation to get started
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            {renderChatGroup("Today", groupedChats.today)}
+            {renderChatGroup("Yesterday", groupedChats.yesterday)}
+            {renderChatGroup("Last 7 days", groupedChats.lastWeek)}
+            {renderChatGroup("Last 30 days", groupedChats.lastMonth)}
+            {renderChatGroup("Older", groupedChats.older)}
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="shrink-0 p-3 flex items-center gap-2 border-t border-sidebar-border">
+        <UserButton user={user} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-sidebar-foreground truncate leading-tight">
+            {user?.name}
+          </p>
+          <p className="text-xs text-muted-foreground truncate leading-tight">
+            {user?.email}
+          </p>
+        </div>
+      </div>
+
+      <DeleteChatModal
+        chatId={selectedChatId}
+        isModalOpen={isModalOpen}
+        setIsModalOpen={setIsModalOpen}
+      />
+    </div>
+  );
+}
