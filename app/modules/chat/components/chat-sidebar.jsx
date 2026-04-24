@@ -154,15 +154,15 @@ export function ChatSidebar({ user, chats: initialChats }) {
   };
 
   return (
-    <div className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-sidebar">
+    <div className="flex h-full w-64 shrink-0 flex-col border-r border-border/50 bg-sidebar/60 backdrop-blur-xl z-20 relative">
       {/* Logo */}
       <div className="flex items-center border-b border-sidebar-border px-4 py-3 h-14">
         <Image
           src="/logo.svg"
-          alt="Logo"
-          width={90}
-          height={32}
-          className="h-7 w-auto"
+          alt="Neon Chat logo"
+          width={400}
+          height={100}
+          className="w-full h-auto object-contain"
         />
       </div>
 
@@ -176,7 +176,7 @@ export function ChatSidebar({ user, chats: initialChats }) {
         >
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 text-sm h-9"
+            className="w-full justify-start gap-2 text-sm h-10 rounded-xl transition-all duration-300 hover:border-primary/50 hover:bg-primary/5 hover:text-primary hover:shadow-[0_0_15px_rgba(0,240,255,0.1)] active:scale-95"
           >
             <PlusIcon className="h-4 w-4" />
             New Chat
@@ -185,22 +185,22 @@ export function ChatSidebar({ user, chats: initialChats }) {
       </div>
 
       {/* Search */}
-      <div className="px-3 pb-3">
-        <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <div className="px-4 pb-4">
+        <div className="relative group/search">
+          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 group-focus-within/search:text-primary transition-colors pointer-events-none" />
           <Input
             placeholder="Search chats..."
-            className="pl-8 pr-7 h-8 text-sm bg-sidebar-accent border-sidebar-border focus-visible:ring-1"
+            className="pl-10 pr-9 h-10 text-sm bg-sidebar-accent/30 border-sidebar-border/50 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors p-1"
               aria-label="Clear search"
             >
-              <XIcon className="h-3.5 w-3.5" />
+              <XIcon className="h-4 w-4" />
             </button>
           )}
         </div>

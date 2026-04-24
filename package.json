@@ -1,9 +1,9 @@
 {
-  "name": "t3-chat",
+  "name": "neon-chat",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "docker compose up -d && next dev",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

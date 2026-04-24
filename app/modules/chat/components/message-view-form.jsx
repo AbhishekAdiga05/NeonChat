@@ -9,6 +9,29 @@ import { useChat } from "@ai-sdk/react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
+const getMessageParts = (content) => {
+  try {
+    const parsed = JSON.parse(content);
+
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
+      return parsed;
+    }
+  } catch {
+    // Fall back to plain text messages.
+  }
+
+  return [{ type: "text", text: content }];
+};
+
+const getMessageTextContent = (message) =>
+  message.parts
+    ?.filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n") ?? message.content;
+
+const getMessageAttachments = (message) =>
+  message.parts?.filter((part) => part.type === "file") ?? [];
+
 const MessageViewWithForm = ({ chatId }) => {
   const { data, isPending, isError, error } = useGetChatById(chatId);
   const searchParams = useSearchParams();
@@ -26,23 +49,15 @@ const MessageViewWithForm = ({ chatId }) => {
       }
 
       return storedMessages.map((msg) => {
-      let parts = [{ type: "text", text: msg.content }];
-      try {
-        const parsed = JSON.parse(msg.content);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
-          parts = parsed;
-        }
-      } catch {
-        // Fallback to treating content as plain text.
-      }
+        const parts = getMessageParts(msg.content);
 
-      return {
-        id: msg.id,
-        role: msg.messageRole.toLowerCase(),
-        content: msg.content,
-        parts: parts,
-        createdAt: msg.createdAt,
-      };
+        return {
+          id: msg.id,
+          role: msg.messageRole.toLowerCase(),
+          content: msg.content,
+          parts,
+          createdAt: msg.createdAt,
+        };
       });
     },
     [storedMessages],
@@ -57,6 +72,7 @@ const MessageViewWithForm = ({ chatId }) => {
   } = useChat({
     api: "/api/chat",
     initialMessages,
+    experimental_throttle: 50,
     body: {
       chatId,
       model: data?.data?.model,
@@ -76,8 +92,9 @@ const MessageViewWithForm = ({ chatId }) => {
   const handleInputChange = (e) => setInput(e.target.value);
   const handleSubmit = (e, options) => {
     e?.preventDefault?.();
-    if (!input) return;
-    sendMessage({ text: input }, options);
+    const files = options?.files;
+    if (!input.trim() && (!files || files.length === 0)) return;
+    sendMessage({ text: input, files }, options);
     setInput("");
   };
 
@@ -137,12 +154,8 @@ const MessageViewWithForm = ({ chatId }) => {
           {messages.map((message) => (
             <MessageCard
               key={message.id}
-              content={
-                message.parts
-                  ?.filter((part) => part.type === "text")
-                  .map((part) => part.text)
-                  .join("\n") ?? message.content
-              }
+              content={getMessageTextContent(message)}
+              attachments={getMessageAttachments(message)}
               role={message.role === "assistant" ? "ASSISTANT" : "USER"}
               type="NORMAL"
               createdAt={message.createdAt}
@@ -159,15 +172,16 @@ const MessageViewWithForm = ({ chatId }) => {
             </div>
           )}
 
+
+
           {/* Scroll anchor */}
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Message Form with gradient overlay */}
-      <div className="relative border-t bg-background">
-        <div className="absolute -top-6 left-0 right-0 h-6 bg-linear-to-b from-transparent to-background pointer-events-none" />
-        <div className="max-w-4xl mx-auto px-4 py-4 pt-1">
+      {/* Floating Message Form */}
+      <div className="relative z-10">
+        <div className="max-w-5xl mx-auto">
           <MessageForm
             model={data?.data?.model}
             chatId={chatId}

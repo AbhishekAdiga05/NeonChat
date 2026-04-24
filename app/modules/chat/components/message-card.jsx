@@ -2,10 +2,35 @@ import { Response } from "@/components/ai-elements/response";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
-import { MessageSquareIcon } from "lucide-react";
+import { MessageSquareIcon, PaperclipIcon } from "lucide-react";
 import React from "react";
 
-const UserMessage = ({ content }) => {
+const AttachmentList = ({ attachments = [] }) => {
+  if (attachments.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {attachments.map((attachment, index) => (
+        <a
+          key={`${attachment.url}-${index}`}
+          href={attachment.url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex max-w-full items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-xs hover:bg-background"
+        >
+          <PaperclipIcon className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate max-w-48">
+            {attachment.filename || "Attachment"}
+          </span>
+        </a>
+      ))}
+    </div>
+  );
+};
+
+const UserMessage = ({ content, attachments }) => {
   return (
     <div className="flex justify-end pb-4 pr-2 pl-10">
       <Card
@@ -13,7 +38,10 @@ const UserMessage = ({ content }) => {
           "rounded-lg bg-muted p-2 shadow-none border-none max-w-[80%] wrap-break-word"
         }
       >
-        {content}
+        <div className="flex flex-col gap-2">
+          {content ? <div>{content}</div> : null}
+          <AttachmentList attachments={attachments} />
+        </div>
       </Card>
     </div>
   );
@@ -47,7 +75,7 @@ const AssistantMessage = ({ content, createdAt, type }) => {
   );
 };
 
-const MessageCard = ({ content, type, role, createdAt }) => {
+const MessageCard = ({ content, type, role, createdAt, attachments = [] }) => {
   if (role === "ASSISTANT") {
     return (
       <AssistantMessage content={content} type={type} createdAt={createdAt} />
@@ -56,7 +84,7 @@ const MessageCard = ({ content, type, role, createdAt }) => {
 
   return (
     <div className="mt-5">
-      <UserMessage content={content} />
+      <UserMessage content={content} attachments={attachments} />
     </div>
   );
 };

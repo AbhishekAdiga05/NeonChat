@@ -1,4 +1,4 @@
-# 📘 T3-Chat Daily Development Log
+# 📘 Neon Chat Daily Development Log
 
 > A daily log to track important concepts and implementations for revision.
 
@@ -50,7 +50,7 @@ const geistSans = Geist({
 #### 1. **Docker Compose Configuration**
 
 ```yaml
-name: "t3-chat"
+name: "neon-chat"
 services:
   db:
     image: postgres:latest
@@ -191,7 +191,7 @@ CREATE TABLE "Test" (
 ### 📂 Project Structure Created
 
 ```
-t3-chat/
+neon-chat/
 ├── app/                    # Next.js App Router
 │   ├── layout.js          # Root layout
 │   ├── page.js            # Home page
@@ -215,7 +215,7 @@ t3-chat/
 
 ```bash
 # Initialize project
-npx create-next-app@latest t3-chat
+npx create-next-app@latest neon-chat
 
 # Install Prisma
 npm install prisma @prisma/client

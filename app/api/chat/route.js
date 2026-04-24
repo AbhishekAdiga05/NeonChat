@@ -11,34 +11,6 @@ const provider = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-function convertStoredMessageToUI(msg) {
-  try {
-    const parts = JSON.parse(msg.content);
-
-    const validParts = parts.filter((part) => {
-      return part.type === "text";
-    });
-
-    if (validParts.length === 0) {
-      return null;
-    }
-
-    return {
-      id: msg.id,
-      role: msg.messageRole.toLowerCase(),
-      parts: validParts,
-      createdAt: msg.createdAt,
-    };
-  } catch (e) {
-    return {
-      id: msg.id,
-      role: msg.messageRole.toLowerCase(),
-      parts: [{ type: "text", text: msg.content }],
-      createdAt: msg.createdAt,
-    };
-  }
-}
-
 function extractPartsAsJSON(message) {
   if (message.parts && Array.isArray(message.parts)) {
     return JSON.stringify(message.parts);
@@ -63,6 +35,7 @@ export async function POST(req) {
       messages: newMessages,
       model: requestedModel,
       skipUserMessage,
+      useWebSearch,
     } = await req.json();
     const model = requestedModel || DEFAULT_MODEL_ID;
 
@@ -117,17 +90,21 @@ export async function POST(req) {
         .filter((m) => m.content);
     }
 
-    console.log("🔥 modelMessages sent to streamText:", JSON.stringify(modelMessages, null, 2));
-
-    // ✅ FIXED: Proper streamText configuration
     const result = streamText({
       model: provider.chat(model),
       messages: modelMessages,
       system: CHAT_SYSTEM_PROMPT,
+      providerOptions: {
+        openrouter: useWebSearch
+          ? {
+              plugins: [{ id: "web", max_results: 5 }],
+            }
+          : undefined,
+      },
     });
 
     return result.toUIMessageStreamResponse({
-      sendReasoning: true,
+      sendReasoning: false,
       originalMessages: allUIMessages,
       onFinish: async ({ responseMessage }) => {
         try {
