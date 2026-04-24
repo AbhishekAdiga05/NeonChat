@@ -5,6 +5,7 @@ import { MessageRole } from "@prisma/client";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { DEFAULT_MODEL_ID } from "@/lib/ai-models";
 
 const provider = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -60,9 +61,10 @@ export async function POST(req) {
     const {
       chatId,
       messages: newMessages,
-      model,
+      model: requestedModel,
       skipUserMessage,
     } = await req.json();
+    const model = requestedModel || DEFAULT_MODEL_ID;
 
     const normalizedNewMessages = Array.isArray(newMessages)
       ? newMessages
@@ -76,20 +78,46 @@ export async function POST(req) {
     // We need to ensure only valid messages are converted
     let modelMessages;
     try {
-      modelMessages = convertToModelMessages(messagesForContext);
+      modelMessages = await convertToModelMessages(messagesForContext);
     } catch (conversionError) {
       console.error("Message conversion error:", conversionError);
-      // Fallback: extract plain text from parts
+      // Fallback: gracefully handle missing parts
       modelMessages = messagesForContext
-        .map((msg) => ({
-          role: msg.role,
-          content: msg.parts
-            .filter((p) => p.type === "text")
-            .map((p) => p.text)
-            .join("\n"),
-        }))
+        .map((msg) => {
+          if (msg.parts && Array.isArray(msg.parts)) {
+            return {
+              role: msg.role,
+              content: msg.parts
+                .filter((p) => p.type === "text")
+                .map((p) => p.text)
+                .join("\n"),
+            };
+          }
+          
+          // Try to parse content if it's a stringified JSON array of parts
+          if (typeof msg.content === "string") {
+            try {
+              const parsed = JSON.parse(msg.content);
+              if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type === "text") {
+                return {
+                  role: msg.role,
+                  content: parsed.map(p => p.text).join("\n")
+                };
+              }
+            } catch (e) {
+              // Not JSON, just use as plain text
+            }
+          }
+
+          return {
+            role: msg.role,
+            content: msg.content || "",
+          };
+        })
         .filter((m) => m.content);
     }
+
+    console.log("🔥 modelMessages sent to streamText:", JSON.stringify(modelMessages, null, 2));
 
     // ✅ FIXED: Proper streamText configuration
     const result = streamText({

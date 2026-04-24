@@ -47,8 +47,11 @@ export function ChatSidebar({ user, chats: initialChats }) {
   const [selectedChatId, setSelectedChatId] = useState(null);
 
   // React Query — initialData hydrated from server-fetch to avoid flash
-  const { data, isFetching, isLoading } = useGetChats(initialChats);
-  const chats = data?.data ?? initialChats ?? [];
+  const { data, isLoading } = useGetChats(initialChats);
+  const chats = useMemo(
+    () => data?.data ?? initialChats ?? [],
+    [data?.data, initialChats],
+  );
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {

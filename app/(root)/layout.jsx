@@ -5,6 +5,8 @@ import Header from "@/app/modules/chat/components/header";
 import { redirect } from "next/navigation";
 import React from "react";
 
+export const dynamic = "force-dynamic";
+
 const Layout = async ({ children }) => {
   const user = await currentUser();
 

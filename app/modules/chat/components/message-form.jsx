@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Send, Paperclip, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextareaAutosize from "react-textarea-autosize";
@@ -22,22 +22,22 @@ export default function MessageForm({
   const { data: models, isPending, error } = useAIModels();
 
   const [useWebSearch, setUseWebSearch] = useState(false);
-  const [useMicrophone, setUseMicrophone] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(model ?? null);
-
-  // Sync when the chat's stored model arrives from React Query
-  useEffect(() => {
-    if (model && !selectedModel) {
-      setSelectedModel(model);
-    }
-  }, [model, selectedModel]);
+  const [selectedModelOverride, setSelectedModelOverride] = useState(null);
+  const selectedModel =
+    selectedModelOverride ?? model ?? models?.models?.[0]?.id ?? null;
 
   const onFormSubmit = (e) => {
     if (!input.trim()) {
       e.preventDefault();
       return;
     }
-    handleSubmit(e);
+    handleSubmit(e, {
+      body: {
+        chatId,
+        model: selectedModel,
+        useWebSearch,
+      },
+    });
   };
 
   return (
@@ -100,7 +100,7 @@ export default function MessageForm({
                 <ModelSelector
                   models={models?.models}
                   selectedModelId={selectedModel}
-                  onModelSelect={setSelectedModel}
+                  onModelSelect={setSelectedModelOverride}
                   className="ml-1"
                 />
               )}

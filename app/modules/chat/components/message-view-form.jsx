@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useGetChatById } from "../hooks/chat";
 import { Spinner } from "@/components/ui/spinner";
@@ -13,28 +13,46 @@ const MessageViewWithForm = ({ chatId }) => {
   const { data, isPending, isError, error } = useGetChatById(chatId);
   const searchParams = useSearchParams();
   const autoTrigger = searchParams.get("autoTrigger") === "true";
-  const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
+  const hasAutoTriggeredRef = useRef(false);
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const queryClient = useQueryClient();
+  const storedMessages = data?.data?.messages;
 
-  const initialMessages = useMemo(() => {
-    if (!data?.data?.messages) return [];
-    return data.data.messages.map((msg) => ({
-      id: msg.id,
-      role: msg.messageRole.toLowerCase(),
-      content: msg.content,
-      createdAt: msg.createdAt,
-    }));
-  }, [data?.data?.messages]);
+  const initialMessages = React.useMemo(
+    () => {
+      if (!storedMessages) {
+        return [];
+      }
+
+      return storedMessages.map((msg) => {
+      let parts = [{ type: "text", text: msg.content }];
+      try {
+        const parsed = JSON.parse(msg.content);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
+          parts = parsed;
+        }
+      } catch {
+        // Fallback to treating content as plain text.
+      }
+
+      return {
+        id: msg.id,
+        role: msg.messageRole.toLowerCase(),
+        content: msg.content,
+        parts: parts,
+        createdAt: msg.createdAt,
+      };
+      });
+    },
+    [storedMessages],
+  );
 
   const {
     messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    reload,
+    sendMessage,
+    regenerate: reload,
+    status,
     setMessages,
   } = useChat({
     api: "/api/chat",
@@ -54,6 +72,17 @@ const MessageViewWithForm = ({ chatId }) => {
     },
   });
 
+  const [input, setInput] = useState("");
+  const handleInputChange = (e) => setInput(e.target.value);
+  const handleSubmit = (e, options) => {
+    e?.preventDefault?.();
+    if (!input) return;
+    sendMessage({ text: input }, options);
+    setInput("");
+  };
+
+  const isLoading = status === "submitted" || status === "streaming";
+
   // Ensure initial messages are set perfectly when data finishes loading, without overwriting history
   useEffect(() => {
     if (initialMessages.length > 0 && messages.length === 0) {
@@ -64,15 +93,14 @@ const MessageViewWithForm = ({ chatId }) => {
   useEffect(() => {
     if (
       autoTrigger &&
-      !hasAutoTriggered &&
+      !hasAutoTriggeredRef.current &&
       initialMessages.length === 1 &&
       initialMessages[0].role === "user"
     ) {
-      setHasAutoTriggered(true);
-      // Let the backend know we already saved the user message in useCreateChat
+      hasAutoTriggeredRef.current = true;
       reload({ body: { skipUserMessage: true, chatId, model: data?.data?.model } });
     }
-  }, [autoTrigger, hasAutoTriggered, initialMessages, reload, chatId, data?.data?.model]);
+  }, [autoTrigger, initialMessages, reload, chatId, data?.data?.model]);
 
   // Check if we are waiting for an AI response
   const lastMessage = messages[messages.length - 1];
@@ -109,7 +137,12 @@ const MessageViewWithForm = ({ chatId }) => {
           {messages.map((message) => (
             <MessageCard
               key={message.id}
-              content={message.content}
+              content={
+                message.parts
+                  ?.filter((part) => part.type === "text")
+                  .map((part) => part.text)
+                  .join("\n") ?? message.content
+              }
               role={message.role === "assistant" ? "ASSISTANT" : "USER"}
               type="NORMAL"
               createdAt={message.createdAt}
