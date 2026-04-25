@@ -1,85 +1,103 @@
-# 🌌 NeonChat
+# NeonChat
 
-<p align="center">
-  <img src="./public/logo.svg" alt="NeonChat Logo" width="120" height="120" />
-</p>
+> AI-powered chat application with multi-model support, real-time streaming, and persistent conversation history.
 
-<h3 align="center">NeonChat</h3>
-
-<p align="center">
-  A state-of-the-art AI Chat interface built for speed, aesthetics, and intelligence.
-</p>
-
-<p align="center">
-  [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-  [![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)](https://react.dev/)
-  [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
-  [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
-</p>
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react)](https://react.dev/)
+[![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma)](https://prisma.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-black?style=flat-square&logo=typescript)](https://typescriptlang.org/)
 
 ---
 
-## 📖 Table of Contents
-- [✨ Key Features](#-key-features)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [📁 Project Structure](#-project-structure)
-- [⚙️ Getting Started](#️-getting-started)
-- [🔑 Environment Variables](#-environment-variables)
-- [🚀 Deployment](#-deployment)
-- [📜 Scripts](#-scripts)
-- [🔮 Roadmap](#-roadmap)
+## Features
+
+- **Multi-Model AI** — Switch between 100+ AI models via OpenRouter, including free models
+- **Real-time Streaming** — Token-by-token response streaming using Server-Sent Events (SSE)
+- **Persistent Chats** — All conversations saved to PostgreSQL with full history
+- **Model Selection** — Choose specific AI models per chat or use auto-selection
+- **Web Search** — Optional web search integration for enhanced responses
+- **GitHub OAuth** — Secure authentication with existing GitHub accounts
 
 ---
 
-## ✨ Key Features
+## Architecture
 
-* 🧠 **Multi-Model Intelligence:** Switch between leading AI models seamlessly, powered by **Vercel AI SDK 6.x** via **OpenRouter**.
-* ⚡ **Ultra-Fast Streaming:** Real-time, token-by-token text generation leveraging HTTP Server-Sent Events (SSE).
-* 🔐 **Secure Authentication:** Robust user session management with **Better-Auth** and GitHub OAuth out of the box.
-* 🗄️ **Persistent Context:** Auto-saving conversation trees mapped efficiently via **Prisma 7** into **PostgreSQL**.
-* 🎨 **Premium Glassmorphism UI:** Advanced, highly responsive dark theme designed with micro-interactions.
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend & Core
-* **Framework:** Next.js 16 (App Router)
-* **View Library:** React 19
-* **State Management:** Zustand & TanStack React Query
-
-### Backend & Database
-* **Database Client:** Prisma ORM v7
-* **Data Layer:** PostgreSQL (Compatible with Neon, Supabase, etc.)
-* **Auth Layer:** Better-Auth
-
-### AI Implementation
-* **AI Orchestration:** Vercel AI SDK Core & React Hooks
-* **API Providers:** OpenRouter Unified Endpoint
-
----
-
-## 📁 Project Structure
-
-```bash
-├── app/                  # Next.js App Router
-│   ├── (auth)/          # Authentication pages (Login, Setup)
-│   ├── (root)/          # Main chat dashboards and layouts
-│   ├── api/             # Secure Route Handlers for AI & Auth
-│   └── modules/         # Modular feature components (Chat, AI Agent)
-├── components/          
-│   ├── ui/              # Base Shadcn-style primitives
-│   └── ai-elements/     # Specialized AI UI responses
-├── lib/                 # Singletons, DB instances, and helpers
-├── prisma/              # Database Schemas & Migrations
-└── hooks/               # Custom React hooks (Mobile views, etc.)
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Frontend                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  Chat UI     │  │  Model       │  │  Sidebar      │  │
+│  │  Components  │  │  Selector    │  │  Navigation  │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└────────────────────────────────────────────���────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                     Next.js API                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  /api/chat   │  │  /api/ai/    │  │  /api/auth   │  │
+│  │  (streaming) │  │  get-models  │  │  (OAuth)     │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└─────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                    External APIs                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  OpenRouter  │  │  Better-Auth │  │  PostgreSQL  │  │
+│  │  (AI Models) │  │  (OAuth)     │  │  (Database)  │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ⚙️ Getting Started
+## Data Model
+
+```
+User
+├── sessions (auth sessions)
+├── accounts (OAuth providers)
+└── chats
+    └── messages (conversation history)
+```
+
+### Database Tables
+
+| Table | Description |
+|-------|-------------|
+| `User` | Authenticated users with email, name, avatar |
+| `Session` | Active user sessions with expiry |
+| `Account` | OAuth provider accounts (GitHub) |
+| `Verification` | Email verification tokens |
+| `Chat` | Chat threads with title and model selection |
+| `Message` | Individual messages (user/assistant) with content |
+
+---
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/chat` | POST | Stream AI responses with SSE |
+| `/api/ai/get-models` | GET | Fetch available OpenRouter models |
+| `/api/auth/[...all]` | * | Better-Auth OAuth handlers |
+
+### Chat Streaming Flow
+
+1. Client sends messages + model selection to `/api/chat`
+2. Server authenticates user via session
+3. Messages converted to OpenRouter format (last 20 kept for context)
+4. AI response streamed back via SSE
+5. Messages auto-saved to database on completion
+
+---
+
+## Setup
 
 ### 1. Clone & Install
+
 ```bash
 git clone https://github.com/AbhishekAdiga05/NeonChat.git
 cd NeonChat
@@ -87,56 +105,129 @@ npm install
 ```
 
 ### 2. Configure Environment
-Create a `.env` file in the root:
+
+Create `.env` file:
 
 ```env
-# Database Access
-DATABASE_URL="postgresql://user:pass@host:port/db"
+# Database (PostgreSQL)
+DATABASE_URL="postgresql://user:password@localhost:5432/neonchat"
 
-# LLM Gateway
+# OpenRouter (https://openrouter.ai/keys)
 OPENROUTER_API_KEY="sk-or-v1-..."
 
-# Auth Settings
-BETTER_AUTH_SECRET="your-32-char-random-string"
+# Auth (generate: openssl rand -base64 32)
+BETTER_AUTH_SECRET="your-32-char-secret"
 BETTER_AUTH_URL="http://localhost:3000"
 
-# GitHub OAuth App
-GITHUB_CLIENT_ID="your-id"
-GITHUB_CLIENT_SECRET="your-secret"
+# GitHub OAuth (https://github.com/settings/applications)
+GITHUB_CLIENT_ID="your-client-id"
+GITHUB_CLIENT_SECRET="your-client-secret"
 ```
 
 ### 3. Initialize Database
+
 ```bash
 npx prisma db push
 ```
 
+### 4. Run Development Server
+
+```bash
+npm run dev
+```
+
 ---
 
-## 🚀 Deployment
+## Project Structure
+
+```
+app/
+├── (auth)/                    # Auth pages
+│   └── sign-in/              # Sign-in page
+├── (root)/                    # Main app pages
+│   ├── chat/[chatId]/        # Individual chat view
+│   └── page.jsx             # Home/chat list
+├── api/                      # API routes
+│   ├── auth/[...all]/        # Better-Auth handlers
+│   ├── chat/                # Chat streaming endpoint
+│   └── ai/get-models/        # Model listing
+├── modules/                  # Feature modules
+│   ├── authentication/       # Auth actions & components
+│   └── chat/                # Chat components & hooks
+│       ├── actions/         # Server actions (CRUD)
+│       ├── components/      # UI components
+│       ├── hooks/           # Client hooks
+│       └── store/           # Zustand store
+└── globals.css              # Tailwind styles
+
+components/ui/               # Shadcn-style primitives
+lib/
+├── auth.js                  # Better-Auth server config
+├── auth-client.js           # Better-Auth client config
+├── db.js                    # Prisma client
+├── ai-models.js             # Model definitions
+└── prompt.js               # System prompts
+
+prisma/
+├── schema.prisma           # Database schema
+└── migrations/             # Migration history
+```
+
+---
+
+## Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `ai` | Streaming responses & message handling |
+| `@openrouter/ai-sdk-provider` | OpenRouter integration |
+| `better-auth` | Authentication & OAuth |
+| `@prisma/client` | Database ORM |
+| `zustand` | Client state management |
+| `shadcn-ui` | UI component library |
+| `tailwindcss` | Styling |
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run lint` | Run ESLint |
+
+---
+
+## Deployment
 
 ### Vercel
-Standard zero-config setup. Ensure all Environment Variables are added to the settings dashboard.
+
+1. Push to GitHub
+2. Import project in Vercel
+3. Add all environment variables
+4. Deploy
 
 ### Netlify
-To trigger full Prisma generation before server compilation:
-1. Set the **Build Command** to: `npx prisma generate && next build`
-2. Set the **Publish Directory** to: `.next`
+
+Set build command: `npx prisma generate && next build`  
+Set output directory: `.next`
 
 ---
 
-## 📜 Scripts
+## Environment Variables Reference
 
-* `npm run dev` - Fire up the local development environment.
-* `npm run build` - Compile optimized Next.js assets.
-* `npm run lint` - Run automated ESLint checks.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `OPENROUTER_API_KEY` | Yes | OpenRouter API key |
+| `BETTER_AUTH_SECRET` | Yes | Random string for session encryption |
+| `BETTER_AUTH_URL` | Yes | App URL (https://yourdomain.com) |
+| `GITHUB_CLIENT_ID` | Yes | GitHub OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth App client secret |
 
 ---
 
-## 🔮 Roadmap
+## License
 
-- [ ] 🎙️ **Speech-to-Text Integration** (Whisper API) for hands-free queries.
-- [ ] 🤖 **Custom AI Personas** allowing tailored responses based on custom system prompts.
-- [ ] 📊 **Usage Analytics Dashboard** to track AI spending and token efficiency.
-
-> [!TIP]
-> Ensure your PostgreSQL instance has adequate pooling enabled (like Prisma Accelerate) if scaling for production loads.
+[MIT](./LICENSE)
