@@ -106,7 +106,7 @@ export function ModelSelector({
               </div>
               {filteredModels.length === 0 ? (
                 <div className="px-2 py-8 text-center text-sm text-muted-foreground">
-                  No models found matching "{searchQuery}"
+                  No models found matching &quot;{searchQuery}&quot;
                 </div>
               ) : (
                 filteredModels.map((model) => (

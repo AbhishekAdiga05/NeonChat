@@ -7,10 +7,13 @@ import { revalidatePath } from "next/cache";
 import { generateText } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CHAT_SYSTEM_PROMPT } from "@/lib/prompt";
+import { DEFAULT_MODEL_ID } from "@/lib/ai-models";
 
 const provider = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
+
+const resolveModelId = (model) => model || DEFAULT_MODEL_ID;
 
 export const createMessageInChat = async (values, chatId) => {
   const user = await currentUser();
@@ -41,9 +44,7 @@ export const createMessageInChat = async (values, chatId) => {
     model = chat?.model;
   }
 
-  if (!model) {
-    return { success: false, message: "No model specified for this chat" };
-  }
+  model = resolveModelId(model);
 
   const userMessage = await db.message.create({
     data: {
@@ -106,10 +107,12 @@ export const createChatWithMessage = async (values) => {
     const user = await currentUser();
     if (!user) return { success: false, message: "Unauthorized user" };
 
-    const { content, model } = values;
+    const { content, model: inputModel } = values;
     if (!content || !content.trim()) {
       return { success: false, message: "Message content is required" };
     }
+
+    const model = resolveModelId(inputModel);
 
     const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
 
@@ -242,7 +245,7 @@ export const generateAiResponse = async (chatId) => {
     return { success: false, message: "Chat not found or has no model" };
   }
 
-  const model = chat.model;
+  const model = resolveModelId(chat.model);
 
   const previousMessages = await db.message.findMany({
     where: { chatId },

@@ -1,4 +1,4 @@
-name : "t3-chat"
+name : "neon-chat"
 services:
   db:
     image: postgres:latest

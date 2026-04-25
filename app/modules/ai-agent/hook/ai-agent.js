@@ -6,7 +6,9 @@ export const useAIModels = () => {
     queryFn: async () => {
       const res = await fetch("/api/ai/get-models");
       if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
-      return res.json();
+      const data = await res.json();
+      console.log("data", data);
+      return data;
     },
     staleTime: 5 * 60 * 1000, // models list rarely changes, cache for 5 min
   });
